@@ -4,7 +4,7 @@ using an AI model. It includes functionalities to initialize code generation, im
 and process the code through various steps defined in the step bundle.
 """
 
-from typing import Callable, Optional, TypeVar
+from typing import Callable, Optional, TypeVar, List
 
 # from gpt_engineer.core.default.git_version_manager import GitVersionManager
 from gpt_engineer.core.ai import AI
@@ -90,6 +90,8 @@ class CliAgent(BaseAgent):
         improve_fn: ImproveType = improve_fn,
         process_code_fn: CodeProcessor = execute_entrypoint,
         preprompts_holder: PrepromptsHolder = None,
+        diff_timeout: int = 3,
+        ignore_files: List[str] = ["example.txt", "new_file.txt"],
     ):
         self.memory = memory
         self.execution_env = execution_env
@@ -98,6 +100,8 @@ class CliAgent(BaseAgent):
         self.process_code_fn = process_code_fn
         self.improve_fn = improve_fn
         self.preprompts_holder = preprompts_holder or PrepromptsHolder(PREPROMPTS_PATH)
+        self.diff_timeout = diff_timeout
+        self.ignore_files = ignore_files
 
     @classmethod
     def with_default_config(
@@ -109,7 +113,8 @@ class CliAgent(BaseAgent):
         improve_fn: ImproveType = improve_fn,
         process_code_fn: CodeProcessor = execute_entrypoint,
         preprompts_holder: PrepromptsHolder = None,
-        diff_timeout=3,
+        diff_timeout: int = 3,
+        ignore_files: List[str] = ["example.txt", "new_file.txt"],
     ):
         """
         Creates a new instance of CliAgent with default configurations for memory, execution environment,
@@ -147,9 +152,11 @@ class CliAgent(BaseAgent):
             process_code_fn=process_code_fn,
             improve_fn=improve_fn,
             preprompts_holder=preprompts_holder or PrepromptsHolder(PREPROMPTS_PATH),
+            diff_timeout=diff_timeout,
+            ignore_files=ignore_files,
         )
 
-    def init(self, prompt: Prompt) -> FilesDict:
+    def init(self, prompt: Prompt, diff_timeout: int = 3) -> FilesDict:
         """
         Generates a new piece of code using the AI and step bundle based on the provided prompt.
 
@@ -187,7 +194,8 @@ class CliAgent(BaseAgent):
         files_dict: FilesDict,
         prompt: Prompt,
         execution_command: Optional[str] = None,
-        diff_timeout=3,
+        diff_timeout: int = 3,
+        ignore_files: List[str] = [],
     ) -> FilesDict:
         """
         Improves an existing piece of code using the AI and step bundle based on the provided prompt.
@@ -213,7 +221,8 @@ class CliAgent(BaseAgent):
             files_dict,
             self.memory,
             self.preprompts_holder,
-            diff_timeout=diff_timeout,
+            ignore_files=self.ignore_files,
+            diff_timeout=self.diff_timeout,
         )
         # entrypoint = gen_entrypoint(
         #     self.ai, prompt, files_dict, self.memory, self.preprompts_holder

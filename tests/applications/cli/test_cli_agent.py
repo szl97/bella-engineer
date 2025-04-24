@@ -36,7 +36,8 @@ def test_init_standard_config(monkeypatch):
     code = cli_agent.init(
         Prompt(
             f"Make a program that prints 'Hello World!' to a file called '{outfile}'"
-        )
+        ),
+        diff_timeout=3,
     )
 
     env = DiskExecutionEnv()
@@ -69,7 +70,8 @@ def test_init_lite_config(monkeypatch):
     code = cli_agent.init(
         Prompt(
             f"Make a program that prints 'Hello World!' to a file called '{outfile}'"
-        )
+        ),
+        diff_timeout=3,
     )
 
     env = DiskExecutionEnv()
@@ -101,7 +103,8 @@ def test_init_clarified_gen_config(monkeypatch):
     code = cli_agent.init(
         Prompt(
             f"Make a program that prints 'Hello World!' to a file called '{outfile} either using python or javascript'"
-        )
+        ),
+        diff_timeout=3,
     )
 
     env = DiskExecutionEnv()

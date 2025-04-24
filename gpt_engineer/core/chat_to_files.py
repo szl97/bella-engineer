@@ -24,7 +24,7 @@ allowing for the dynamic application of changes to code bases and the efficient 
 import logging
 import re
 
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 from regex import regex
 
@@ -66,7 +66,7 @@ def chat_to_files_dict(chat: str) -> FilesDict:
     return files_dict
 
 
-def apply_diffs(diffs: Dict[str, Diff], files: FilesDict) -> FilesDict:
+def apply_diffs(diffs: Dict[str, Diff], files: FilesDict, ignore_files: List[str] = ["example.txt", "new_file.txt"]) -> FilesDict:
     """
     Applies diffs to the provided files.
 
@@ -86,6 +86,8 @@ def apply_diffs(diffs: Dict[str, Diff], files: FilesDict) -> FilesDict:
                 line[1] for hunk in diff.hunks for line in hunk.lines
             )
         else:
+            if diff.filename_pre not in files.keys():
+                continue
             # Convert the file content to a dictionary of lines
             line_dict = file_to_lines_dict(files[diff.filename_pre])
             for hunk in diff.hunks:
@@ -120,7 +122,7 @@ def apply_diffs(diffs: Dict[str, Diff], files: FilesDict) -> FilesDict:
     return files
 
 
-def parse_diffs(diff_string: str, diff_timeout=3) -> dict:
+def parse_diffs(diff_string: str, diff_timeout: int = 3) -> dict:
     """
     Parses a diff string in the unified git diff format.
 
@@ -130,9 +132,9 @@ def parse_diffs(diff_string: str, diff_timeout=3) -> dict:
     Returns:
     - dict: A dictionary of Diff objects keyed by filename.
     """
-    # Regex to match individual diff blocks
+    # Regex to match individual diff blocks - 支持多种diff格式
     diff_block_pattern = regex.compile(
-        r"```.*?\n\s*?--- .*?\n\s*?\+\+\+ .*?\n(?:@@ .*? @@\n(?:[-+ ].*?\n)*?)*?```",
+        r"(?:```diff\n|\n```diff\n|```\n|``\n)?(?:--- .*?\n\+\+\+ .*?\n(?:@@ .*? @@\n(?:[-+ ].*?\n)*?)*?)(?:```|``|$)",
         re.DOTALL,
     )
 

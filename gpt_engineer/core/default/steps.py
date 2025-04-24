@@ -275,6 +275,7 @@ def improve_fn(
     memory: BaseMemory,
     preprompts_holder: PrepromptsHolder,
     diff_timeout=3,
+    ignore_files=["example.txt", "new_file.txt"],
 ) -> FilesDict:
     """
     Improves the code based on user input and returns the updated files.
@@ -309,15 +310,15 @@ def improve_fn(
         DEBUG_LOG_FILE,
         "UPLOADED FILES:\n" + files_dict.to_log() + "\nPROMPT:\n" + prompt.text,
     )
-    return _improve_loop(ai, files_dict, memory, messages, diff_timeout=diff_timeout)
+    return _improve_loop(ai, files_dict, memory, messages, diff_timeout=diff_timeout, ignore_files=ignore_files)
 
 
 def _improve_loop(
-    ai: AI, files_dict: FilesDict, memory: BaseMemory, messages: List, diff_timeout=3
+    ai: AI, files_dict: FilesDict, memory: BaseMemory, messages: List, diff_timeout: int = 3, ignore_files: List[str] = ["example.txt", "new_file.txt"]
 ) -> FilesDict:
     messages = ai.next(messages, step_name=curr_fn())
     files_dict, errors = salvage_correct_hunks(
-        messages, files_dict, memory, diff_timeout=diff_timeout
+        messages, files_dict, memory, diff_timeout=diff_timeout, ignore_files=ignore_files
     )
 
     retries = 0
@@ -339,22 +340,30 @@ def _improve_loop(
 
 
 def salvage_correct_hunks(
-    messages: List, files_dict: FilesDict, memory: BaseMemory, diff_timeout=3
-) -> tuple[FilesDict, List[str]]:
+    messages: List, files_dict: FilesDict, memory: BaseMemory, diff_timeout: int = 3, ignore_files: List[str] = ["example.txt", "new_file.txt"]
+):
+    diffs = {}
     error_messages = []
-    ai_response = messages[-1].content.strip()
-
-    diffs = parse_diffs(ai_response, diff_timeout=diff_timeout)
-    # validate and correct diffs
-
-    for _, diff in diffs.items():
+    for message in messages:
+        # 确保message.content是字符串类型
+        if hasattr(message, 'content') and isinstance(message.content, str):
+            try:
+                diffs.update(parse_diffs(message.content, diff_timeout))
+            except Exception as e:
+                error_messages.append(f"Error parsing diffs: {str(e)}")
+    for diff in diffs.values():
+        if diff.filename_pre in ignore_files:
+            continue
         # if diff is a new file, validation and correction is unnecessary
         if not diff.is_new_file():
+            # 检查文件是否存在，如果不存在则创建空文件
+            if diff.filename_pre not in files_dict:
+                continue
             problems = diff.validate_and_correct(
                 file_to_lines_dict(files_dict[diff.filename_pre])
             )
             error_messages.extend(problems)
-    files_dict = apply_diffs(diffs, files_dict)
+    files_dict = apply_diffs(diffs, files_dict, ignore_files)
     memory.log(IMPROVE_LOG_FILE, "\n\n".join(x.pretty_repr() for x in messages))
     memory.log(DIFF_LOG_FILE, "\n\n".join(error_messages))
     return files_dict, error_messages
@@ -373,13 +382,13 @@ class Tee(object):
             file.flush()
 
 
-def handle_improve_mode(prompt, agent, memory, files_dict, diff_timeout=3):
+def handle_improve_mode(prompt, agent, memory, files_dict, diff_timeout=3, ignore_files=["example.txt", "new_file.txt"]):
     captured_output = io.StringIO()
     old_stdout = sys.stdout
     sys.stdout = Tee(sys.stdout, captured_output)
 
     try:
-        files_dict = agent.improve(files_dict, prompt, diff_timeout=diff_timeout)
+        files_dict = agent.improve(files_dict, prompt, diff_timeout=diff_timeout, ignore_files=ignore_files)
     except Exception as e:
         print(
             f"Error while improving the project: {e}\nCould you please upload the debug_log_file.txt in {memory.path}/logs folder to github?\nFULL STACK TRACE:\n"

@@ -540,7 +540,7 @@ def main(
                     files_dict = files_dict_before
 
         else:
-            files_dict = agent.init(prompt)
+            files_dict = agent.init(prompt, diff_timeout=diff_timeout)
             # collect user feedback if user consents
             config = (code_gen_fn.__name__, execution_fn.__name__)
             collect_and_send_human_review(prompt, model, temperature, config, memory)

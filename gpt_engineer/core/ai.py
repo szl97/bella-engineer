@@ -87,11 +87,13 @@ class AI:
 
     def __init__(
         self,
-        model_name="gpt-4-turbo",
-        temperature=0.1,
-        azure_endpoint=None,
-        streaming=True,
-        vision=False,
+        openai_api_base: Optional[str] = None,
+        openai_api_key: Optional[str] = None,
+        model_name: str = "gpt-4-turbo",
+        temperature: float = 0.1,
+        azure_endpoint: Optional[str] = None,
+        streaming: bool = True,
+        vision: bool = False,
     ):
         """
         Initialize the AI class.
@@ -103,15 +105,13 @@ class AI:
         temperature : float, optional
             The temperature to use for the model, by default 0.1.
         """
+        self.openai_api_base = openai_api_base
+        self.openai_api_key = openai_api_key
         self.temperature = temperature
         self.azure_endpoint = azure_endpoint
         self.model_name = model_name
         self.streaming = streaming
-        self.vision = (
-            ("vision-preview" in model_name)
-            or ("gpt-4-turbo" in model_name and "preview" not in model_name)
-            or ("claude" in model_name)
-        )
+        self.vision = vision
         self.llm = self._create_chat_model()
         self.token_usage_log = TokenUsageLog(model_name)
 
@@ -353,6 +353,7 @@ class AI:
                 openai_api_type="azure",
                 streaming=self.streaming,
                 callbacks=[StreamingStdOutCallbackHandler()],
+                request_timeout=180,
             )
         elif "claude" in self.model_name:
             return ChatAnthropic(
@@ -361,21 +362,29 @@ class AI:
                 callbacks=[StreamingStdOutCallbackHandler()],
                 streaming=self.streaming,
                 max_tokens_to_sample=4096,
+                timeout=180,
             )
         elif self.vision:
             return ChatOpenAI(
+                openai_api_base=self.openai_api_base,
+                openai_api_key=self.openai_api_key,
                 model=self.model_name,
                 temperature=self.temperature,
                 streaming=self.streaming,
                 callbacks=[StreamingStdOutCallbackHandler()],
-                max_tokens=4096,  # vision models default to low max token limits
+                request_timeout=180,
+                n=1,
             )
         else:
             return ChatOpenAI(
+                openai_api_base=self.openai_api_base,
+                openai_api_key=self.openai_api_key,
                 model=self.model_name,
                 temperature=self.temperature,
                 streaming=self.streaming,
                 callbacks=[StreamingStdOutCallbackHandler()],
+                request_timeout=180,
+                n=1,
             )
 
 

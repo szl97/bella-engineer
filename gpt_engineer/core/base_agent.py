@@ -9,6 +9,7 @@ Classes:
     BaseAgent: Abstract base class for an agent that interacts with code.
 """
 from abc import ABC, abstractmethod
+from typing import List
 
 from gpt_engineer.core.files_dict import FilesDict
 from gpt_engineer.core.prompt import Prompt
@@ -23,9 +24,9 @@ class BaseAgent(ABC):
     """
 
     @abstractmethod
-    def init(self, prompt: Prompt) -> FilesDict:
+    def init(self, prompt: Prompt, diff_timeout: int = 3) -> FilesDict:
         pass
 
     @abstractmethod
-    def improve(self, files_dict: FilesDict, prompt: Prompt) -> FilesDict:
+    def improve(self, files_dict: FilesDict, prompt: Prompt, diff_timeout: int = 3, ignore_files: List[str] = []) -> FilesDict:
         pass
